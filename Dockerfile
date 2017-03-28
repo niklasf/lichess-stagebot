@@ -14,7 +14,6 @@ RUN useradd --create-home --user-group builder
 VOLUME /home/builder/lila
 WORKDIR /home/builder/lila
 
-COPY stage-deploy.sh /home/builder/stage-deploy.sh
 COPY build-deps.sh /home/builder/build-deps.sh
 
 #RUN /home/builder/build-deps.sh

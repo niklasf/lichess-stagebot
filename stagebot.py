@@ -21,9 +21,6 @@ class SlackBot:
 
         logging.info("Connected.")
 
-        self.deploy()
-        return
-
         while True:
             for msg in self.slack.rtm_read():
                 logging.debug("%s", msg)
@@ -49,11 +46,9 @@ class SlackBot:
             self.send("Building stagebot-buildenv ...")
             sh(["docker", "build", "-t", "stagebot-buildenv", "."])
 
-            tmpdir = "/tmp/lila.tmp"
-            if tmpdir:
-            #with tempfile.TemporaryDirectory(prefix="stagebot") as tmpdir:
+            with tempfile.TemporaryDirectory(prefix="stagebot") as tmpdir:
                 self.send("Cloning repository ...")
-                #sh(["git", "clone", "/home/stagebot/lila", "--recursive", "--shared", tmpdir])
+                sh(["git", "clone", "/home/stagebot/lila", "--recursive", "--shared", tmpdir])
 
                 DOCKER_RUN = ["docker", "run", "--volume", "%s:/home/builder/lila" % tmpdir, "stagebot-buildenv"]
 
