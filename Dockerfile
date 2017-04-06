@@ -16,4 +16,4 @@ WORKDIR /home/builder/lila
 
 COPY build-deps.sh /home/builder/build-deps.sh
 
-#RUN /home/builder/build-deps.sh
+RUN /home/builder/build-deps.sh

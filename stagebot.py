@@ -12,7 +12,8 @@ def sh(args):
     return subprocess.check_output(args, stderr=subprocess.STDOUT)
 
 class SlackBot:
-    def __init__(self, token):
+    def __init__(self, lila, token):
+        os.chdir(lila)
         self.slack = SlackClient(token)
 
     def run(self):
@@ -25,7 +26,11 @@ class SlackBot:
             for msg in self.slack.rtm_read():
                 logging.debug("%s", msg)
                 if msg.get("type") == "message":
-                    self.handle_message(msg["text"])
+                    try:
+                        self.handle_message(msg["text"])
+                    except subprocess.CalledProcessError as err:
+                        logging.exception("Command failed")
+                        self.post_snippet(str(err), err.output.decode("utf-8", errors="ignore"))
 
             time.sleep(1)
 
@@ -38,10 +43,27 @@ class SlackBot:
                             title=title, content=snippet or "<no output>", filetype="txt")
 
     def handle_message(self, message):
-        if "deploy" in message and "stagebot" in message:
-            self.deploy()
+        commands = iter(message.split())
 
-    def deploy(self):	
+        if next(commands, None) != "stagebot":
+            return
+
+        while True:
+            cmd = next(commands, None)
+            if cmd is None:
+                break
+            elif cmd == "pull":
+                sh(["git", "pull", "--ff-only"])
+            elif cmd == "assets":
+                sh(["./ui/build", "prod"])
+            elif cmd == "hello":
+                self.send("hello")
+            else:
+                self.send(":interrobang: Unknown command")
+
+        self.send("Done.")
+
+    def deploy(self):
         try:
             self.send("Building stagebot-buildenv ...")
             sh(["docker", "build", "-t", "stagebot-buildenv", "."])
@@ -61,7 +83,7 @@ class SlackBot:
                 self.send("Deploying assets ...")
                 sh(["rsync", "--archive", "--no-o", "--no-g", "%s/public" % tmpdir, "/home/lichess-stage"])
                 sh(["chown", "-R", "lichess:lichess", "/home/lichess-stage"])
-     
+
             self.send("Done.")
         except subprocess.CalledProcessError as err:
             logging.exception("Deploy failed")
@@ -69,5 +91,5 @@ class SlackBot:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    bot = SlackBot(os.environ["SLACK_BOT_TOKEN"])
+    bot = SlackBot("/home/niklas/Projekte/lila", os.environ["SLACK_BOT_TOKEN"])
     bot.run()
