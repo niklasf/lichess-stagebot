@@ -9,11 +9,23 @@ import configparser
 import argparse
 import sys
 import urllib.request as urllib
+import tarfile
 
 from slackclient import SlackClient
 
 def sh(args):
-    return subprocess.check_output(args, stderr=subprocess.STDOUT)
+    return subprocess.check_output(args, stderr=subprocess.STDOUT, shell=True)
+
+
+def remove_prefix(text, prefix):
+    return text[len(prefix):] if text.startswith(prefix) else text
+
+
+def make_relative(prefix, member):
+    if member.name.startswith(prefix):
+        member.name = member.name[len(prefix):]
+        return True
+    return False
 
 
 class ParserError(Exception):
@@ -59,7 +71,10 @@ class SlackBot:
                     if args[0].lower() not in ["stagebot", "@stagebot"]:
                         continue
 
-                    self.handle(args[1:])
+                    try:
+                        self.handle(args[1:])
+                    except Exception as err:
+                        self.post_snippet("build failure", str(err))
 
             time.sleep(1)
 
@@ -87,12 +102,26 @@ class SlackBot:
             self.deploy(args)
 
     def deploy(self, args):
-        branch = "build-artifacts"
-        download = "%s/lila-%s.tar.gz" % (self.config.get("s3", "bucket"), branch)
+        download = "%s/lila-%s.tar.gz" % (self.config.get("s3", "bucket"), args.branch)
         self.send("Downloading %s ..." % download)
         urllib.urlretrieve(download, "lila.tar.gz")
 
-        self.send("Deploying ...")
+        with tarfile.open("lila.tar.gz") as tar:
+            with tar.extractfile("commit.txt") as commit_file:
+                sha, message = commit_file.readline().decode("utf-8").strip().split(None, 1)
+
+            self.send("Deploying https://github.com/%s/commit/%s (`%s`) ..." % (
+                self.config.get("github", "slug"), sha, message))
+
+            app_files = [t for t in tar.getmembers() if make_relative("target/universal/stage/", t)]
+            tar.extractall(self.config.get("deploy", "app"), members=app_files)
+
+            asset_files = [t for t in tar.getmembers() if make_relative("public/", t)]
+            tar.extractall(self.config.get("deploy", "assets"), members=asset_files)
+
+        sh(self.config.get("deploy", "after"))
+
+        self.send(":white_check_mark: Done")
 
 
 if __name__ == "__main__":
