@@ -10,6 +10,7 @@ import argparse
 import sys
 import urllib.request as urllib
 import tarfile
+import re
 
 from slackclient import SlackClient
 
@@ -94,6 +95,10 @@ class SlackBot:
             return
         except ParserError as err:
             self.send(":interrobang: %s" % err)
+            return
+
+        if not re.match(r"^[A-Za-z0-9_-]+\Z", args.branch):
+            self.send(":interrobang: Invalid branch name")
             return
 
         if args.command == "echo":
