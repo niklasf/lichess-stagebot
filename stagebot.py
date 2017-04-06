@@ -107,26 +107,36 @@ class SlackBot:
             self.deploy(args)
 
     def deploy(self, args):
+        start_time = time.time()
+
+        # 0. Pre
+        sh(self.config.get("deploy", "pre"))
+
+        # 1. Download
         download = "%s/lila-%s.tar.gz" % (self.config.get("s3", "bucket"), args.branch)
         self.send("Downloading %s ..." % download)
         urllib.urlretrieve(download, "lila.tar.gz")
 
         with tarfile.open("lila.tar.gz") as tar:
+            # 2. Peek
             with tar.extractfile("commit.txt") as commit_file:
                 sha, message = commit_file.readline().decode("utf-8").strip().split(None, 1)
 
             self.send("Deploying https://github.com/%s/commit/%s (`%s`) ..." % (
                 self.config.get("github", "slug"), sha, message))
 
+            # 3. Extract
             app_files = [t for t in tar.getmembers() if make_relative("target/universal/stage/", t)]
             tar.extractall(self.config.get("deploy", "app"), members=app_files)
 
             asset_files = [t for t in tar.getmembers() if make_relative("public/", t)]
             tar.extractall(self.config.get("deploy", "assets"), members=asset_files)
 
-        sh(self.config.get("deploy", "after"))
+        # 4. Post
+        sh(self.config.get("deploy", "post"))
 
-        self.send(":white_check_mark: Done")
+        end_time = time.time()
+        self.send(":white_check_mark: Done in %.1fs" % (end_time - start_time))
 
 
 if __name__ == "__main__":
