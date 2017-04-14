@@ -69,7 +69,7 @@ class SlackBot:
 
                 if msg.get("type") == "message" and "text" in msg:
                     args = msg["text"].split()
-                    if args[0].lower() not in ["stagebot", "@stagebot"]:
+                    if args[0].lower() not in ["stagebot", "@stagebot"] and self.config.get("slack", "bot_uid") not in args[0]:
                         continue
 
                     try:
