@@ -67,7 +67,7 @@ class SlackBot:
             for msg in self.slack.rtm_read():
                 logging.debug("%s", msg)
 
-                if msg.get("type") == "message":
+                if msg.get("type") == "message" and "text" in msg:
                     args = msg["text"].split()
                     if args[0].lower() not in ["stagebot", "@stagebot"]:
                         continue
