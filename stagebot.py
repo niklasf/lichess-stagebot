@@ -68,6 +68,9 @@ class SlackBot:
                 logging.debug("%s", msg)
 
                 if msg.get("type") == "message" and "text" in msg:
+                    if msg["user"] == self.config.get("slack", "bot_uid"):
+                        continue
+
                     args = msg["text"].split()
                     if args[0].lower() not in ["stagebot", "@stagebot"] and self.config.get("slack", "bot_uid") not in args[0]:
                         continue
@@ -154,7 +157,7 @@ class SlackBot:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     bot = SlackBot()
     if len(sys.argv) > 1:
         bot.handle(sys.argv[1:])
