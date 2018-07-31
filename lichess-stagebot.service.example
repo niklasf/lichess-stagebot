@@ -1,0 +1,12 @@
+[Unit]
+Description=Lichess stagebot
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+WorkingDirectory=/home/lichess-stagebot
+ExecStart=/home/lichess-stagebot/venv/bin/python stagebot.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
